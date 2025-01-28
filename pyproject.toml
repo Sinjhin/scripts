@@ -1,0 +1,25 @@
+[project]
+name = "sinjhin"
+version = "0.1.0"
+description = "Personal utility scripts collection"
+authors = [
+    {name = "Sinjhin (John Gardner)",email = "john@ardea.io"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+]
+
+[tool.poetry]
+packages = [
+    { include = "src" }
+]
+
+[tool.poe.tasks]
+test = 'python -m src.test'
+ls = 'python -m src.powerful_ls'
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
