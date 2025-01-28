@@ -35,7 +35,9 @@ class FileTools:
         '.dart_tool',  # Dart
         'venv',
         '.venv',
-        'env',
+        '.task',
+        '.next',
+        '.nuxt',
     }
 
     # Size thresholds for color coding (in bytes)
@@ -171,11 +173,68 @@ class FileTools:
             
         return repos_with_changes
 
-    def commit_all_changes(self) -> None:
+    def _select_repos(self, repos_with_changes: Dict[str, str]) -> List[str]:
+        """Interactive repo selector - now with more 'leave me alone' energy."""
+        if not repos_with_changes:
+            return []
+
+        repos_list = list(repos_with_changes.keys())
+
+        self.logger.info(f"\n{Colors.CYAN}Select repositories to SKIP:{Colors.RESET}")
+        self.logger.info(f"{Colors.YELLOW}Enter numbers (space-separated), 'all', or 'none'. Press Enter to commit everything.{Colors.RESET}\n")
+
+        for idx, repo in enumerate(repos_list, 1):
+            status_preview = repos_with_changes[repo].split('\n')[0].strip()
+            if len(repos_with_changes[repo].split('\n')) > 1:
+                status_preview += " ..."
+            self.logger.info(f"{Colors.GREEN}{idx}{Colors.RESET}. {repo} | sample: {Colors.YELLOW}Changes: {status_preview}{Colors.RESET}")
+
+        while True:
+            try:
+                choice = input(f"{Colors.CYAN}Select repos to skip (1-{len(repos_list)}){Colors.RESET}: ").strip().lower()
+                
+                if choice == 'all':  # Skip everything = commit nothing
+                    return []
+                if choice == 'none' or not choice:  # Skip nothing = commit everything
+                    return repos_list
+
+                # Now we're selecting what to EXCLUDE
+                selected_indices = [int(x) - 1 for x in choice.split()]
+                ignored_repos = {repos_list[i] for i in selected_indices if 0 <= i < len(repos_list)}
+                selected_repos = [repo for repo in repos_list if repo not in ignored_repos]
+                
+                if selected_repos or not ignored_repos:  # Show what WILL be committed
+                    self.logger.info(f"\n{Colors.GREEN}Repositories to be committed:{Colors.RESET}")
+                    for repo in selected_repos:
+                        self.logger.info(f"• {repo}")
+                    
+                    if ignored_repos:
+                        self.logger.info(f"\n{Colors.YELLOW}Repositories to be skipped:{Colors.RESET}")
+                        for repo in ignored_repos:
+                            self.logger.info(f"• {repo}")
+                    
+                    confirm = input(f"\n{Colors.YELLOW}Proceed with this selection? (y/n):{Colors.RESET} ").lower()
+                    if confirm == 'y':
+                        return selected_repos
+                    self.logger.info("Let's try again...")
+            
+            except (ValueError, IndexError):
+                self.logger.info(f"{Colors.RED}Invalid input. Please use numbers separated by spaces.{Colors.RESET}")
+
+    def commit_all_changes(self, interactive: bool = True) -> None:
         """Commit all changes in repositories with uncommitted work."""
         repos_with_changes = self.find_uncommitted_changes()
         
         if not repos_with_changes:
+            return
+
+        repos_to_commit = (
+            self._select_repos(repos_with_changes) if interactive 
+            else list(repos_with_changes.keys())
+        )
+
+        if not repos_to_commit:
+            self.logger.info(f"{Colors.YELLOW}No repositories selected for commit.{Colors.RESET}")
             return
 
         date_str = datetime.now().strftime('%Y%m%d')
@@ -183,14 +242,36 @@ class FileTools:
 
         self.logger.info(f"\n{Colors.YELLOW}Committing changes...{Colors.RESET}")
         
-        for repo_path in repos_with_changes:
+        for repo_path in repos_to_commit:
             try:
                 subprocess.run(['git', 'add', '-A'], cwd=repo_path, check=True)
-                subprocess.run(['git', 'commit', '-m', commit_msg], cwd=repo_path, check=True)
+                subprocess.run(['git', 'commit', '-m', commit_msg, '--no-verify'], cwd=repo_path, check=True)
                 self.logger.info(f"{Colors.GREEN}✓{Colors.RESET} Committed changes in {Colors.CYAN}{repo_path}{Colors.RESET}")
             
             except subprocess.SubprocessError as e:
                 self.logger.error(f"{Colors.RED}✗ Failed to commit changes in {repo_path}: {str(e)}{Colors.RESET}")
+
+    def fix_filemode(self) -> None:
+        """Because executable bits are like opinions - sometimes it's better to ignore them."""
+        root = Path(self.current_dir)
+        fixed_count = 0
+        
+        self.logger.info(f"\n{Colors.YELLOW}Fixing file mode settings in git repos...{Colors.RESET}")
+        
+        for git_dir in root.glob('**/.git'):
+            repo_path = git_dir.parent
+            try:
+                subprocess.run(
+                    ['git', 'config', 'core.filemode', 'false'],
+                    cwd=repo_path,
+                    check=True,
+                    capture_output=True
+                )
+                self.logger.info(f"{Colors.GREEN}✓{Colors.RESET} Fixed filemode in: {Colors.CYAN}{repo_path}{Colors.RESET}")
+                fixed_count += 1
+                
+            except subprocess.SubprocessError as e:
+                self.logger.error(f"{Colors.RED}✗ Failed to fix filemode in {repo_path}: {str(e)}{Colors.RESET}")
 
 def main():
     """CLI entry point for our file management salvation."""
@@ -228,6 +309,16 @@ def main():
         action='store_true', 
         help='Commit all changes with timestamp message'
     )
+    parser.add_argument(
+        '--no-interactive',
+        action='store_true',
+        help='Skip interactive selection for commit-all'
+    )
+    parser.add_argument(
+        '--fix-filemode',
+        action='store_true',
+        help='Set core.filemode=false in all git repos (chmod changes be gone)'
+    )
     
     args = parser.parse_args()
     tools = FileTools()
@@ -247,9 +338,12 @@ def main():
     
     if args.find_uncommitted:
         tools.find_uncommitted_changes()
+
+    if args.fix_filemode:
+        tools.fix_filemode()
     
     if args.commit_all:
-        tools.commit_all_changes()
+        tools.commit_all_changes(interactive=not args.no_interactive)
 
 if __name__ == '__main__':
     main()

@@ -26,6 +26,7 @@ deep-tree = "python -m src.file_tools --tree --depth 4"
 find-junk = "python -m src.file_tools --find-ignored"
 clean-junk = "python -m src.file_tools --delete-ignored"
 uncommitted = "python -m src.file_tools --find-uncommitted"
+fix-mode = "python -m src.file_tools --fix-filemode"
 commit-all = "python -m src.file_tools --commit-all"
 nuke = { sequence = ["commit-all", "clean-junk"] }
 
