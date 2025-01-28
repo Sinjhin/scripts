@@ -20,6 +20,7 @@ packages = [
 test = 'python -m src.test'
 ls = 'python -m src.powerful_ls'
 noncommital = 'python -m src.repo_check'
+path = 'python -m src.path_management'
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
