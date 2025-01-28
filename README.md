@@ -51,3 +51,4 @@ then source it: `source ~/.zshrc`
 - `test`: Just prints something
 - `ls`: Just shows a framework of what can be done with script locations for now
 - `noncommital`: Checks current dir and sub-dirs for repos with uncommited changes and lists them
+- `path`: Provides some `PATH` management
