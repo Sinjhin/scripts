@@ -14,6 +14,12 @@ Neat, right?
 Probably should have looked to see if anyone else had already done this.
 🤷🏻‍♂️
 
+## Requirements
+Installed globally:
+- conda
+- poetry
+- poethepoet
+
 ## Setup
 Add these functions to your `.zshrc`, `.bashrc`, etc..
 Replace `sinjhin` with whatever conda venv you want to use.
