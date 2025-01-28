@@ -21,15 +21,16 @@ Installed globally:
 - poethepoet
 
 ## Setup
-Add these functions to your `.zshrc`, `.bashrc`, etc..
-Replace `sinjhin` with whatever conda venv you want to use.
+- Clone this repo to your home dir:
+  - `cd ~ && git clone git@github.com:Sinjhin/scripts.git`
+- Add these functions to your `.zshrc`, `.bashrc`, etc..
+  - (Replace `sinjhin` with whatever conda venv you want to use)
 ```shell
 # runs Poe in ~/scripts from anywhere
 function p() {
     CURRENT_DIR="$(pwd)" poe -C ~/scripts "$@"
-    # (cd ~/scripts && ORIG_DIR="$OLDPWD" poe "$@")
-    # poe -C ~/scripts "$@"
 }
+# Sets specified conda venv and runs 'poetry ...args' from ~/scripts
 function hp() {
     if ! conda info --envs | grep -q "^sinjhin "; then
         echo "Uh oh, can't find the 'sinjhin' environment."
@@ -41,6 +42,10 @@ function hp() {
 }
 ```
 then source it: `source ~/.zshrc`
+
+## Modules
+- `p`: PoeThePoet. Looks at `~/scripts/pyproject.toml`'s `[tool.poe.tasks]`
+- `hp`: Poetry. Runs `poetry ...args` from `~/scripts` in set conda venv
 
 ## Scripts
 - `test`: Just prints something
