@@ -1,6 +1,9 @@
 # Personal Home Folder Scripts Collection
 Might eventually combine with some AI function called tools as well.
 
+## Ideas
+- add a selected license file from the Ardea ones based on project type
+
 ## Usage
 So, you know Python pretty well? It's nice and friendly isn't it?
 
