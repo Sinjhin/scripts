@@ -55,3 +55,12 @@ then source it: `source ~/.zshrc`
 - `ls`: Just shows a framework of what can be done with script locations for now
 - `noncommital`: Checks current dir and sub-dirs for repos with uncommited changes and lists them
 - `path`: Provides some `PATH` management
+- `tree`: Lists tree with dir sizes to dept 2
+- `deep-tree`: Same as above but depth 4
+- `find-junk`: Finds commonly .gitignore'd files/folders
+- `clean-junk`: Deletes them
+- `uncommitted`: Looks for repos with uncommited changes in current dir and sub dirs
+- `fix-mode`: Fixes repos to not worry about file permission changes
+- `commit-all`: Opens option to select repos to skip and then makes a --no-verify commit on all with message "YYYYMMDD commit for transfer"
+  - Flag `--no-interactive` doesn't ask and just does the thing
+- `nuke`: Runs `commit-all` then `clean-junk`
