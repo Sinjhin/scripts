@@ -7,6 +7,17 @@ from typing import List, Dict, Set, Optional
 import logging
 import argparse
 
+class Colors:
+    """Because ANSI codes are just spicy strings."""
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
+    RESET = '\033[0m'
+
 class FileTools:
     """Because sometimes you need to clean house, and your house is full of code."""
     
@@ -27,6 +38,15 @@ class FileTools:
         'env',
     }
 
+    # Size thresholds for color coding (in bytes)
+    SIZE_THRESHOLDS = {
+        1_000_000_000: (Colors.RED, "😱"),      # 1GB+
+        500_000_000: (Colors.MAGENTA, "😰"),    # 500MB+
+        100_000_000: (Colors.YELLOW, "😅"),     # 100MB+
+        50_000_000: (Colors.CYAN, "😌"),        # 50MB+
+        0: (Colors.GREEN, "😊"),                # Everything else
+    }
+
     def __init__(self):
         self.current_dir = os.environ.get('CURRENT_DIR', os.getcwd())
         self.logger = self._setup_logger()
@@ -44,13 +64,21 @@ class FileTools:
         """Calculate directory size in bytes."""
         return sum(f.stat().st_size for f in path.glob('**/*') if f.is_file())
 
+    def _get_size_color(self, size: int) -> tuple[str, str]:
+        """Get the appropriate color and emoji for a given size."""
+        for threshold, (color, emoji) in sorted(self.SIZE_THRESHOLDS.items(), reverse=True):
+            if size >= threshold:
+                return color, emoji
+        return Colors.CYAN, "😊"  # Default
+
     def _format_size(self, size: int) -> str:
-        """Convert bytes to human readable format."""
+        """Convert bytes to human readable format with color."""
+        color, emoji = self._get_size_color(size)
         for unit in ['B', 'KB', 'MB', 'GB']:
             if size < 1024:
-                return f"{size:.1f}{unit}"
+                return f"{color}{size:.1f}{unit} {emoji}{Colors.RESET}"
             size /= 1024
-        return f"{size:.1f}TB"
+        return f"{color}{size:.1f}TB {emoji}{Colors.RESET}"
 
     def list_subdirs(self, max_depth: int = 2) -> None:
         """List all subdirectories up to specified depth with their sizes, sorted by size (descending)."""
@@ -67,17 +95,16 @@ class FileTools:
             if path.is_dir() and not path.name.startswith('.'):
                 size = self._get_dir_size(path)
                 indent = "  " * depth
-                prefix = "└──" if depth > 0 else ""
-                self.logger.info(f"{indent}{prefix} {path.name}/ ({self._format_size(size)})")
+                prefix = f"{Colors.BLUE}└──{Colors.RESET}" if depth > 0 else ""
+                name_color = Colors.CYAN if depth == 0 else Colors.WHITE
+                self.logger.info(f"{indent}{prefix} {name_color}{path.name}/{Colors.RESET} ({self._format_size(size)})")
                 
-                # Get all subdirectories and their sizes
                 subdirs = [
                     (p, get_dir_info(p)) 
                     for p in path.iterdir() 
                     if p.is_dir() and not p.name.startswith('.')
                 ]
                 
-                # Sort by size descending, then name ascending for same sizes
                 sorted_subdirs = sorted(
                     subdirs,
                     key=lambda x: (-x[1][0], x[1][1])  # -size for descending, name for ties
@@ -86,7 +113,7 @@ class FileTools:
                 for subdir, _ in sorted_subdirs:
                     print_tree(subdir, depth + 1)
 
-        self.logger.info(f"\nDirectory Tree (max depth: {max_depth}, sorted by size):")
+        self.logger.info(f"\n{Colors.GREEN}Directory Tree{Colors.RESET} (max depth: {max_depth}, sorted by size):")
         print_tree(root)
 
     def find_ignored_dirs(self, dry_run: bool = True) -> None:
@@ -99,31 +126,32 @@ class FileTools:
 
         total_size = sum(self._get_dir_size(d) for d in found_dirs)
         
-        self.logger.info("\nFound potentially removable directories:")
+        self.logger.info(f"\n{Colors.YELLOW}Found potentially removable directories:{Colors.RESET}")
         for dir_path in sorted(found_dirs):
             size = self._get_dir_size(dir_path)
-            self.logger.info(f"- {dir_path} ({self._format_size(size)})")
+            self.logger.info(f"{Colors.BLUE}•{Colors.RESET} {dir_path} ({self._format_size(size)})")
         
-        self.logger.info(f"\nTotal space used: {self._format_size(total_size)}")
+        self.logger.info(f"\n{Colors.MAGENTA}Total space used: {self._format_size(total_size)}{Colors.RESET}")
         
         if not dry_run:
-            self.logger.info("\nDeleting directories...")
+            self.logger.info(f"\n{Colors.RED}Deleting directories...{Colors.RESET}")
             for dir_path in found_dirs:
                 try:
                     shutil.rmtree(dir_path)
-                    self.logger.info(f"✓ Deleted {dir_path}")
+                    self.logger.info(f"{Colors.GREEN}✓{Colors.RESET} Deleted {dir_path}")
                 except Exception as e:
-                    self.logger.error(f"✗ Failed to delete {dir_path}: {str(e)}")
+                    self.logger.error(f"{Colors.RED}✗{Colors.RESET} Failed to delete {dir_path}: {str(e)}")
 
     def find_uncommitted_changes(self) -> Dict[str, str]:
         """Find all git repositories with uncommitted changes."""
         root = Path(self.current_dir)
         repos_with_changes: Dict[str, str] = {}
 
+        self.logger.info(f"\n{Colors.YELLOW}Scanning for uncommitted changes...{Colors.RESET}")
+        
         for git_dir in root.glob('**/.git'):
             repo_path = git_dir.parent
             try:
-                # Check for changes
                 result = subprocess.run(
                     ['git', 'status', '--porcelain'],
                     cwd=repo_path,
@@ -133,12 +161,14 @@ class FileTools:
                 
                 if result.stdout.strip():
                     repos_with_changes[str(repo_path)] = result.stdout
-                    self.logger.info(f"\nFound changes in {repo_path}:")
-                    self.logger.info(result.stdout)
+                    self.logger.info(f"{Colors.RED}•{Colors.RESET} Changes found in: {Colors.CYAN}{repo_path}{Colors.RESET}")
             
             except subprocess.SubprocessError as e:
-                self.logger.error(f"Error checking {repo_path}: {str(e)}")
+                self.logger.error(f"{Colors.RED}Error checking {repo_path}: {str(e)}{Colors.RESET}")
 
+        if not repos_with_changes:
+            self.logger.info(f"{Colors.GREEN}No uncommitted changes found. You're squeaky clean! 🧼{Colors.RESET}")
+            
         return repos_with_changes
 
     def commit_all_changes(self) -> None:
@@ -146,33 +176,26 @@ class FileTools:
         repos_with_changes = self.find_uncommitted_changes()
         
         if not repos_with_changes:
-            self.logger.info("No repositories with uncommitted changes found.")
             return
 
         date_str = datetime.now().strftime('%Y%m%d')
         commit_msg = f"{date_str} commit for transfer"
 
+        self.logger.info(f"\n{Colors.YELLOW}Committing changes...{Colors.RESET}")
+        
         for repo_path in repos_with_changes:
             try:
-                # Add all changes
                 subprocess.run(['git', 'add', '-A'], cwd=repo_path, check=True)
-                
-                # Commit changes
-                subprocess.run(
-                    ['git', 'commit', '-m', commit_msg],
-                    cwd=repo_path,
-                    check=True
-                )
-                
-                self.logger.info(f"✓ Committed changes in {repo_path}")
+                subprocess.run(['git', 'commit', '-m', commit_msg], cwd=repo_path, check=True)
+                self.logger.info(f"{Colors.GREEN}✓{Colors.RESET} Committed changes in {Colors.CYAN}{repo_path}{Colors.RESET}")
             
             except subprocess.SubprocessError as e:
-                self.logger.error(f"✗ Failed to commit changes in {repo_path}: {str(e)}")
+                self.logger.error(f"{Colors.RED}✗ Failed to commit changes in {repo_path}: {str(e)}{Colors.RESET}")
 
 def main():
     """CLI entry point for our file management salvation."""
     parser = argparse.ArgumentParser(
-        description="File management tools that spark joy (and free up disk space)"
+        description=f"{Colors.CYAN}File management tools that spark joy (and free up disk space){Colors.RESET}"
     )
     parser.add_argument(
         '--tree', 
