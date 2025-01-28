@@ -35,6 +35,7 @@ class PathManager:
         self.paths = os.environ.get('PATH', '').split(':')
         self.zsh_files = [
             Path.home() / '.zshrc',
+            Path.home() / '.sinrc',
             Path.home() / '.zshenv',
             Path.home() / '.zprofile',
             Path.home() / '.zlogin',
