@@ -4,11 +4,37 @@ import subprocess
 from typing import List
 
 class PathManager:
+    def which(self, command):
+        """Walk through PATH to find where a command would be found"""
+        print(f"\nSearching for '{command}' in PATH:")
+        found = False
+        for i, directory in enumerate(self.paths, 1):
+            path = Path(directory) / command
+            try:
+                if path.exists():
+                    if path.is_file() and os.access(path, os.X_OK):
+                        if path.is_symlink():
+                            target = path.resolve()
+                            print(f"✓ {i}. {path} -> {target} (FOUND)")
+                        else:
+                            print(f"✓ {i}. {path} (FOUND)")
+                        found = True
+                        # Continue searching to show shadowed executables
+                    else:
+                        print(f"! {i}. {path} (EXISTS BUT NOT EXECUTABLE)")
+                else:
+                    print(f"  {i}. Checked {directory}")
+            except Exception as e:
+                print(f"! {i}. Error checking {directory}: {e}")
+        
+        if not found:
+            print(f"\nNo executable '{command}' found in PATH")
+        print()
+
     def __init__(self):
         self.paths = os.environ.get('PATH', '').split(':')
         self.zsh_files = [
             Path.home() / '.zshrc',
-            Path.home() / '.sinrc',
             Path.home() / '.zshenv',
             Path.home() / '.zprofile',
             Path.home() / '.zlogin',
@@ -26,9 +52,20 @@ class PathManager:
         ]
 
     def display_paths(self):
+        # Find duplicates
+        seen = {}
+        duplicates = set()
+        for path in self.paths:
+            if path in seen:
+                duplicates.add(path)
+            seen[path] = True
+
         print("\nCurrent PATH (in order of precedence):")
         for i, path in enumerate(self.paths, 1):
-            print(f"{i}. {path}")
+            if path in duplicates:
+                print(f"{i}. \033[91m{path} (DUPLICATE)\033[0m")
+            else:
+                print(f"{i}. {path}")
         print()
 
     def swap_paths(self):
@@ -140,6 +177,7 @@ class PathManager:
             print("d - Delete a path")
             print("a - Add a path")
             print("f - Find PATH modifications in zsh files")
+            print("w - Which (find executable in PATH)")
             print("e - Export current PATH")
             print("q - Quit")
             
@@ -155,6 +193,9 @@ class PathManager:
                 self.add_path()
             elif choice == 'f':
                 self.find_path_modifications()
+            elif choice == 'w':
+                command = input("Enter command to find: ").strip()
+                self.which(command)
             elif choice == 'e':
                 self.export_path()
             else:
