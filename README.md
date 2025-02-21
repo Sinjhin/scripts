@@ -64,3 +64,29 @@ then source it: `source ~/.zshrc`
 - `commit-all`: Opens option to select repos to skip and then makes a --no-verify commit on all with message "YYYYMMDD commit for transfer"
   - Flag `--no-interactive` doesn't ask and just does the thing
 - `nuke`: Runs `commit-all` then `clean-junk`
+
+
+
+
+
+
+* Two ways to create the repo
+   * Github template
+   * CLI tool
+* Using a GitHub App with webhooks
+   * There will be a flag of wether to auto deploy on push to main or from a deploy button on the main SaaS page
+   * In either case, the GitHub app runs validation on the Agents and Tools in the repo to make sure everything is set up correctly
+* Right now we will just focus on tools and agents
+   * Each will have its own dir in the repo
+   * Tools will be composed into the each agent container if the agent has access to that tool
+   * Agents will have a flag determining if they are ephemeral or not
+      * ephemeral agents will live in a Cloud Run container
+      * non-ephemeral will have their own GKE container in a cluster
+      * each container will have a WebRTC service that connects will connect to both OpenAI realtime and the App frontend running from Firebase Storage (NextJS app)
+      * Each agent from the repo will create its own deterministic ID that won't collide with Firebase document Ids
+* The user should be able to create the repo, add the GitHub App from the marketplace, click deploy on the SaaS frontend, and have the agents and tools deploy to their already existing account (uses Firebase Auth) without overwriting any existing Tools or agents
+* The non-ephemeral agents should show a running icon and have the option to be stopped or started
+* the ephemeral agents should have the ability to be started
+* The ephemeral agents should save their state on SIGTERM
+* If the user has the auto-deploy option set and merges to main it should redeploy the agents and tools, overwriting themselves
+* if the user hits deploy on the SaaS front-end the agents should redeploy overwriting themselves
