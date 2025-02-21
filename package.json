@@ -1,0 +1,22 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "description": "Might eventually combine with some AI function called tools as well.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sinjhin/scripts.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Sinjhin/scripts/issues"
+  },
+  "homepage": "https://github.com/Sinjhin/scripts#readme",
+  "dependencies": {
+    "inquirer": "^12.4.2"
+  }
+}
